@@ -1,6 +1,5 @@
 import gym
 from gym.envs.mujoco import HalfCheetahEnv
-from gym.envs.classic_control import PendulumEnv
 
 import rlkit.torch.pytorch_util as ptu
 from rlkit.torch.ppo.ppo_env_replay_buffer import PPOEnvReplayBuffer
@@ -21,8 +20,6 @@ def experiment(variant):
     torch.autograd.set_detect_anomaly(True)
     expl_env = NormalizedBoxEnv(HalfCheetahEnv())
     eval_env = NormalizedBoxEnv(HalfCheetahEnv())
-    # expl_env = NormalizedBoxEnv(PendulumEnv())
-    # eval_env = NormalizedBoxEnv(PendulumEnv())
     obs_dim = expl_env.observation_space.low.size
     action_dim = eval_env.action_space.low.size
 
