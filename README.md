@@ -34,6 +34,14 @@ Run the following command for visualizing the trained policies:
 ```
 python scripts/run_policy_diayn.py <PATH_TO_SUB_POLICY>/params.pkl
 ```
+Here is an example implementation result on the OpenAI Gym environment, Bipedal Walker-v2:
+[![example video](https://img.youtube.com/vi/vHnpOFplT-U/hqdefault.jpg)](https://www.youtube.com/watch?v=vHnpOFplT-U)
+
+Intrinsic Reward Learning Curve:
+![intrinsic reward learning curve](docs/images/diayn_intrinsic_rewards.png)
+
+Policy Loss Learning Curve:
+![intrinsic reward learning curve](docs/images/diayn_policy_loss.png)
 
 ### Running the Example Script for PPO
 Run the following command:
@@ -43,6 +51,7 @@ python examples/ppo.py
 Here is an example implementation result on the OpenAI Gym environment, Bipedal Walker-v2:
 
 [![example video](https://img.youtube.com/vi/xf2WyVV5kEw/hqdefault.jpg)](https://www.youtube.com/watch?v=xf2WyVV5kEw)
+
 
 
 ### Other Major Contributors
