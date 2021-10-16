@@ -47,10 +47,10 @@ class PPOMdpPathCollector (MdpPathCollector):
             R = 0
 
             for i in reversed(range(path_len)):
-                advantages[i] = delta[i] + term[i] * (self.discount * self.gae_lambda) * gae
+                advantages[i] = delta[i] + term[i] * (self.discount * self.gae_lambda) * torch.tensor(gae).float().cuda()
                 gae = advantages[i]
 
-                returns[i] = rewards[i] + term[i] * self.discount * R
+                returns[i] = rewards[i] + term[i] * self.discount * torch.tensor(R).float().cuda()
                 R = returns[i]
 
             advantages = np_ify(advantages)
