@@ -278,28 +278,39 @@ class Logger(object):
         self._prefix_str = ''.join(self._prefixes)
 
     def save_itr_params(self, itr, params):
-        if self._snapshot_dir:
-            if self._snapshot_mode == 'all':
-                file_name = osp.join(self._snapshot_dir, 'itr_%d.pkl' % itr)
-                torch.save(params, file_name)
-            elif self._snapshot_mode == 'last':
-                # override previous params
-                file_name = osp.join(self._snapshot_dir, 'params.pkl')
-                torch.save(params, file_name)
-            elif self._snapshot_mode == "gap":
-                if itr % self._snapshot_gap == 0:
-                    file_name = osp.join(self._snapshot_dir, 'itr_%d.pkl' % itr)
-                    torch.save(params, file_name)
-            elif self._snapshot_mode == "gap_and_last":
-                if itr % self._snapshot_gap == 0:
-                    file_name = osp.join(self._snapshot_dir, 'itr_%d.pkl' % itr)
-                    torch.save(params, file_name)
-                file_name = osp.join(self._snapshot_dir, 'params.pkl')
-                torch.save(params, file_name)
-            elif self._snapshot_mode == 'none':
-                pass
-            else:
-                raise NotImplementedError
+        # make directory for every neural network in params
+        for param_key in list(params.keys()):
+            if param_key == 'exploration/env' or param_key == 'evaluation/env':
+                continue
+
+            param_part = params[param_key]
+            file_name = osp.join(self._snapshot_dir, param_key)
+            if not os.path.exists(file_name):
+                os.makedirs(file_name)
+
+            if self._snapshot_dir:
+                if self._snapshot_mode == 'all':
+                    file_name = osp.join(file_name, 'itr_%d.pt' % itr)
+                    torch.save(param_part, file_name)
+                elif self._snapshot_mode == 'last':
+                    # override previous params
+                    file_name = osp.join(file_name, 'params.pt')
+                    print(param_part)
+                    torch.save(param_part, file_name)
+                elif self._snapshot_mode == "gap":
+                    if itr % self._snapshot_gap == 0:
+                        file_name = osp.join(file_name, 'itr_%d.pt' % itr)
+                        torch.save(param_part, file_name)
+                elif self._snapshot_mode == "gap_and_last":
+                    if itr % self._snapshot_gap == 0:
+                        file_name = osp.join(file_name, 'itr_%d.pt' % itr)
+                        torch.save(param_part, file_name)
+                    file_name = osp.join(file_name, 'params.pt')
+                    torch.save(param_part, file_name)
+                elif self._snapshot_mode == 'none':
+                    pass
+                else:
+                    raise NotImplementedError
 
 
 logger = Logger()
