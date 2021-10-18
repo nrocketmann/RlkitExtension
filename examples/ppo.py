@@ -1,6 +1,5 @@
 import gym
 from gym.envs.mujoco import HalfCheetahEnv
-from gym.envs.classic_control import PendulumEnv
 
 import rlkit.torch.pytorch_util as ptu
 from rlkit.torch.ppo.ppo_env_replay_buffer import PPOEnvReplayBuffer
@@ -19,6 +18,7 @@ import torch
 
 def experiment(variant):
     torch.autograd.set_detect_anomaly(True)
+<<<<<<< HEAD
     #expl_env = NormalizedBoxEnv(HalfCheetahEnv())
     #eval_env = NormalizedBoxEnv(HalfCheetahEnv())
     # expl_env = NormalizedBoxEnv(PendulumEnv())
@@ -27,6 +27,10 @@ def experiment(variant):
     eval_env = NormalizedBoxEnv(gym.make("BipedalWalker-v2"))
     #expl_env = NormalizedBoxEnv(gym.make("LunarLanderContinuous-v2"))
     #eval_env = NormalizedBoxEnv(gym.make("LunarLanderContinuous-v2"))
+=======
+    expl_env = NormalizedBoxEnv(HalfCheetahEnv())
+    eval_env = NormalizedBoxEnv(HalfCheetahEnv())
+>>>>>>> ppo
     obs_dim = expl_env.observation_space.low.size
     action_dim = eval_env.action_space.low.size
 

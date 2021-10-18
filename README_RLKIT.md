@@ -59,11 +59,11 @@ The initial release for 0.2 has the following major changes:
  - Switch to batch-style training rather than online training.
    - Makes code more amenable to parallelization.
    - Implementing the online-version is straightforward.
- - Refactor training code to be its own object, rather than being integrated 
+ - Refactor training code to be its own object, rather than being integrated
  inside of `RLAlgorithm`.
  - Refactor sampling code to be its own object, rather than being integrated
  inside of `RLAlgorithm`.
- - Implement [Skew-Fit: 
+ - Implement [Skew-Fit:
 State-Covering Self-Supervised Reinforcement Learning](https://arxiv.org/abs/1903.03698),
 a method for performing goal-directed exploration to maximize the entropy of 
 visited states.
@@ -73,7 +73,7 @@ visited states.
    - Remove unnecessary policy regualization terms.
    - Use numerically stable Jacobian computation.
 
-Overall, the refactors are intended to make the code more modular and 
+Overall, the refactors are intended to make the code more modular and
 readable than the previous versions.
 
 ### Version 0.1
@@ -207,7 +207,7 @@ To learn more, more about `doodad`, [go to the repository](https://github.com/ju
  - Implement model-based algorithms.
 
 # Legacy Code (v0.1.2)
-For Temporal Difference Models (TDMs) and the original implementation of 
+For Temporal Difference Models (TDMs) and the original implementation of
 Reinforcement Learning with Imagined Goals (RIG), run
 `git checkout tags/v0.1.2`.
 
