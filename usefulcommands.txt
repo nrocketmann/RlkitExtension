@@ -1,0 +1,4 @@
+python scripts/run_policy_diayn.py Ant-v2 data/DIAYN-10-Ant-v2/DIAYN_10_Ant-v2_2021_11_09_02_03_53_0000--s-0 --vidname vid5
+
+
+python examples/diayn.py Ant-v2

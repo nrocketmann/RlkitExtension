@@ -157,14 +157,18 @@ def list_of_dicts__to__dict_of_lists(lst):
     # {'foo': [3, 4, 5], 'bar': [1, 2, 3]}
     ```
     """
+    #print(lst)
     if len(lst) == 0:
         return {}
     keys = lst[0].keys()
     output_dict = collections.defaultdict(list)
     for d in lst:
-        assert set(d.keys()) == set(keys)
+        #assert set(d.keys()) == set(keys)
         for k in keys:
-            output_dict[k].append(d[k])
+            try:
+                output_dict[k].append(d[k])
+            except KeyError:
+                output_dict[k].append(None)
     return output_dict
 
 
