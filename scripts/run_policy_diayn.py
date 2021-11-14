@@ -43,7 +43,7 @@ def simulate_policy(args):
                 env.log_diagnostics([path])
             logger.dump_tabular()
             for _ in range(30):
-                video.write(np.zeros([])) #TODO: actually make shape
+                video.write(np.zeros([500,500,3]).astype(np.uint8))
             for i, img in enumerate(path['images']):
                 print(i)
                 print(img.shape)

@@ -100,6 +100,7 @@ if __name__ == "__main__":
                         help='environment')
     parser.add_argument('--skill_dim', type=int, default=10,
                         help='skill dimension')
+    parser.add_argument('--gpu',action='store_true',help="use gpu?")
     args = parser.parse_args()
 
     # noinspection PyTypeChecker
@@ -128,5 +129,6 @@ if __name__ == "__main__":
         ),
     )
     setup_logger('DIAYN_' + str(args.skill_dim) + '_' + args.env, variant=variant)
-    # ptu.set_gpu_mode(True)  # optionally set the GPU (default=False)
+    if args.gpu:
+        ptu.set_gpu_mode(True)  # optionally set the GPU (default=False)
     experiment(variant, args)
