@@ -8,6 +8,8 @@ from rlkit.torch.sac.policies import TanhGaussianPolicy
 from rlkit.policies.base import Policy
 from rlkit.torch.core import eval_np
 from rlkit.torch.distributions import TanhNormal
+from rlkit.policies.base import ExplorationPolicy
+from rlkit.torch.networks import SplitNetworkSimple
 
 LOG_SIG_MAX = 2
 LOG_SIG_MIN = -20
@@ -77,6 +79,128 @@ class SkillTanhGaussianPolicy(TanhGaussianPolicy):
         else:
             std = self.std
             log_std = self.log_std
+
+        log_prob = None
+        entropy = None
+        mean_action_log_prob = None
+        pre_tanh_value = None
+        if deterministic:
+            action = torch.tanh(mean)
+        else:
+            tanh_normal = TanhNormal(mean, std)
+            if return_log_prob:
+                if reparameterize is True:
+                    action, pre_tanh_value = tanh_normal.rsample(
+                        return_pretanh_value=True
+                    )
+                else:
+                    action, pre_tanh_value = tanh_normal.sample(
+                        return_pretanh_value=True
+                    )
+                log_prob = tanh_normal.log_prob(
+                    action,
+                    pre_tanh_value=pre_tanh_value
+                )
+                log_prob = log_prob.sum(dim=1, keepdim=True)
+            else:
+                if reparameterize is True:
+                    action = tanh_normal.rsample()
+                else:
+                    action = tanh_normal.sample()
+
+        return (
+            action, mean, log_std, log_prob, entropy, std,
+            mean_action_log_prob, pre_tanh_value,
+        )
+
+class SimpleSplitSkillGaussianPolicy(nn.Module):
+    def __init__(
+            self,
+            hidden_sizes,
+            obs_dim,
+            action_dim,
+            std=None,
+            skill_dim=4,
+            init_w=1e-3
+    ):
+        super().__init__()
+        if std is None:
+            self.network = SplitNetworkSimple(
+                hidden_sizes=hidden_sizes,
+                input_x_size = obs_dim,
+                output_size=action_dim,
+                num_heads=skill_dim,
+                use_std=True
+            )
+        else:
+            self.network = SplitNetworkSimple(
+                hidden_sizes=hidden_sizes,
+                input_x_size = obs_dim,
+                output_size=action_dim,
+                num_heads=skill_dim,
+            )
+        self.action_dim = action_dim
+        self.skill_dim = skill_dim
+        self.skill = 0
+
+        self.log_std = None
+        self.std = std
+        # if std is None:
+        #     last_hidden_size = obs_dim
+        #     if len(hidden_sizes) > 0:
+        #         last_hidden_size = hidden_sizes[-1] * skill_dim
+        #         print("last hidden size: " + str(last_hidden_size))
+        #     self.last_fc_log_std = nn.Linear(last_hidden_size, action_dim)
+        #     self.last_fc_log_std.weight.data.uniform_(-init_w, init_w)
+        #     self.last_fc_log_std.bias.data.uniform_(-init_w, init_w)
+        # else:
+        if not (std is None):
+            self.log_std = np.log(std)
+            assert LOG_SIG_MIN <= self.log_std <= LOG_SIG_MAX
+
+    def get_action(self, obs_np, deterministic=False):
+        # generate (iters, skill_dim) matrix that stacks one-hot skill vectors
+        # online reinforcement learning
+
+        skill_vec = np.zeros(self.skill_dim)
+        skill_vec[self.skill] += 1
+        #obs_np = np.concatenate((obs_np, skill_vec), axis=0)
+        actions = self.get_actions(obs_np[None], skill_vec[None],deterministic=deterministic)
+        return actions[0, :], {"skill": skill_vec}
+
+    def get_actions(self, obs_np, skill, deterministic=False):
+        return eval_np(self, obs_np, skill, deterministic=deterministic)[0]
+
+    def skill_reset(self):
+        self.skill = random.randint(0, self.skill_dim-1)
+
+    def parameters(self):
+        return self.network.parameters()
+
+    def forward(
+            self,
+            obs,
+            skill_vec=None,
+            reparameterize=True,
+            deterministic=False,
+            return_log_prob=False,
+    ):
+        """
+        :param obs: Observation
+        :param deterministic: If True, do not sample
+        :param return_log_prob: If True, return a sample and its log probability
+        """
+        if type(skill_vec)==type(None):
+            raise ValueError("You always need a skill vector")
+        #REQUIRES SKILL VEC
+        if self.std is None:
+            out,log_std, std = self.network(obs,skill_vec,True)
+        else:
+            out = self.network(obs,skill_vec,True)
+            std = self.std
+            log_std = self.log_std
+
+        mean = out
 
         log_prob = None
         entropy = None

@@ -118,6 +118,8 @@ class DIAYNTrainer(TorchTrainer):
             obs, skill_vec=skills, reparameterize=True, return_log_prob=True,
         )
         obs_skills = torch.cat((obs, skills), dim=1)
+        obs_actions_inp = torch.cat((obs,new_obs_actions), dim=1)
+        old_obs_actions_inp = torch.cat((obs,actions), dim=1)
         if self.use_automatic_entropy_tuning:
             alpha_loss = -(self.log_alpha * (log_pi + self.target_entropy).detach()).mean()
             self.alpha_optimizer.zero_grad()
@@ -129,24 +131,25 @@ class DIAYNTrainer(TorchTrainer):
             alpha = 1
 
         q_new_actions = torch.min(
-            self.qf1(obs_skills, new_obs_actions),
-            self.qf2(obs_skills, new_obs_actions),
+            self.qf1(obs_actions_inp,skills),
+            self.qf2(obs_actions_inp,skills),
         )
         policy_loss = (alpha*log_pi - q_new_actions).mean()
 
         """
         QF Loss
         """
-        q1_pred = self.qf1(obs_skills, actions)
-        q2_pred = self.qf2(obs_skills, actions)
+        q1_pred = self.qf1(old_obs_actions_inp, skills)
+        q2_pred = self.qf2(old_obs_actions_inp, skills)
         # Make sure policy accounts for squashing functions like tanh correctly!
         new_next_actions, _, _, new_log_pi, *_ = self.policy(
             next_obs, skill_vec = skills, reparameterize=True, return_log_prob=True,
         )
         next_obs_skills = torch.cat((next_obs, skills), dim=1)
+        next_obs_actions = torch.cat((next_obs, new_next_actions),dim=1)
         target_q_values = torch.min(
-            self.target_qf1(next_obs_skills, new_next_actions),
-            self.target_qf2(next_obs_skills, new_next_actions),
+            self.target_qf1(next_obs_actions,skills),
+            self.target_qf2(next_obs_actions,skills),
         ) - alpha * new_log_pi
 
         q_target = self.reward_scale * rewards + (1. - terminals) * self.discount * target_q_values

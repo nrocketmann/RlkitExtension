@@ -13,6 +13,8 @@ from rlkit.torch.core import eval_np
 from rlkit.torch.data_management.normalizer import TorchFixedNormalizer
 from rlkit.torch.modules import LayerNorm
 
+LOG_SIG_MAX = 2
+LOG_SIG_MIN = -20
 
 def identity(x):
     return x
@@ -121,3 +123,55 @@ class TanhMlpPolicy(MlpPolicy):
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, output_activation=torch.tanh, **kwargs)
+
+
+#Can be used for multiple independent policies, or multiple independent Q functions
+#Takes skill vector and X inputs
+#for a Q function, X would be action and state put together, for a policy it would be just state
+class SplitNetworkSimple(nn.Module):
+    def __init__(self,
+                 hidden_sizes,
+                 output_size,
+                 input_x_size,
+                 num_heads,
+                 use_std=False
+                 ):
+        super(SplitNetworkSimple,self).__init__()
+        self.num_heads = num_heads
+        self.mlps = []
+        self.output_size = output_size
+        if use_std:
+            for i in range(2*num_heads):
+                self.mlps.append(FlattenMlp(hidden_sizes,output_size,input_x_size))
+        else:
+            for i in range(num_heads):
+                self.mlps.append(FlattenMlp(hidden_sizes,output_size,input_x_size))
+        self.use_std= use_std
+
+    def forward(self,input_x, input_skill, return_hidden = False):
+        #input_x shape: batch x inp_dim
+        #skill shape: batch x skill_dim=num_heads
+
+        mlp_results = torch.stack([mlp(input_x) for mlp in self.mlps],dim=0).transpose(1,0) #shape batch x num_heads x output_dim
+        if self.use_std:
+            skill_stretch = input_skill.unsqueeze(-1)
+            mean_results = mlp_results[:,:self.num_heads,:]
+            std_results = mlp_results[:, self.num_heads:, :]
+            composition_mean = (skill_stretch * mean_results).sum(1)  # shape batch x output_dim
+            composition_mean = composition_mean / skill_stretch.sum(1)
+            composition_std = (skill_stretch * std_results).sum(1)  # shape batch x output_dim
+            log_std = composition_std / skill_stretch.sum(1)
+            log_std = torch.clamp(log_std, LOG_SIG_MIN, LOG_SIG_MAX)
+            std = torch.exp(log_std)
+            return composition_mean, log_std, std
+        else:
+            skill_stretch = input_skill.unsqueeze(-1) # shape batch x heads x 1
+            composition = (skill_stretch * mlp_results).sum(1)  # shape batch x output_dim
+            composition = composition / skill_stretch.sum(1)
+            return composition
+
+    def parameters(self):
+        for mlp in self.mlps:
+            for w in mlp.parameters():
+                yield w
+
