@@ -1,6 +1,7 @@
 import gym
 import argparse
 #from gym.envs.mujoco import HalfCheetahEnv
+#from brax import envs
 
 import rlkit.torch.pytorch_util as ptu
 from rlkit.torch.sac.diayn.diayn_env_replay_buffer import DIAYNEnvReplayBuffer
@@ -15,10 +16,12 @@ from rlkit.torch.sac.diayn.diayn_torch_online_rl_algorithm import DIAYNTorchOnli
 
 
 def experiment(variant, args):
-    expl_env = NormalizedBoxEnv(gym.make(str(args.env)))
-    eval_env = NormalizedBoxEnv(gym.make(str(args.env)))
-    # expl_env = NormalizedBoxEnv(HalfCheetahEnv())
-    # eval_env = NormalizedBoxEnv(HalfCheetahEnv())
+    environment = "Ant-v2"  # @param ['ant', 'halfcheetah', 'hopper', 'humanoid', 'reacher', 'walker2d', 'fetch', 'grasp', 'ur5e']
+
+    # expl_env = NormalizedBoxEnv(envs.create_gym_env('ant'))
+    # eval_env = NormalizedBoxEnv(envs.create_gym_env('ant'))
+    expl_env = NormalizedBoxEnv(gym.make(environment))
+    eval_env = NormalizedBoxEnv(gym.make(environment))
     obs_dim = expl_env.observation_space.low.size
     action_dim = eval_env.action_space.low.size
     skill_dim = args.skill_dim
