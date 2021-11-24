@@ -11,7 +11,7 @@ from rlkit.torch.sac.diayn.diayn_path_collector import DIAYNMdpPathCollector
 from rlkit.samplers.data_collector.step_collector import MdpStepCollector
 from rlkit.torch.sac.diayn.policies import SimpleSplitSkillGaussianPolicy, MakeDeterministic
 from rlkit.torch.sac.diayn.diayn import DIAYNTrainer
-from rlkit.torch.networks import FlattenMlp, SplitNetworkSimple
+from rlkit.torch.networks import FlattenMlp, SplitNetworkSimple, SplitNetworkShared
 from rlkit.torch.sac.diayn.diayn_torch_online_rl_algorithm import DIAYNTorchOnlineRLAlgorithm
 
 
@@ -28,31 +28,35 @@ def experiment(variant, args):
 
     M = variant['layer_size']
     split_layer_size = int(M/skill_dim)
-    qf1 = SplitNetworkSimple(
+    qf1 = SplitNetworkShared(
         input_x_size=obs_dim + action_dim,
         output_size=1,
         hidden_sizes = [split_layer_size, split_layer_size],
-        num_heads=skill_dim
+        num_heads=skill_dim,
+        starter_hiddens=[512]
     )
 
-    qf2 = SplitNetworkSimple(
+    qf2 = SplitNetworkShared(
         input_x_size=obs_dim + action_dim,
         output_size=1,
         hidden_sizes = [split_layer_size, split_layer_size],
-        num_heads=skill_dim
+        num_heads=skill_dim,
+        starter_hiddens=[512]
     )
 
-    target_qf1 = SplitNetworkSimple(
+    target_qf1 = SplitNetworkShared(
         input_x_size=obs_dim + action_dim,
         output_size=1,
         hidden_sizes = [split_layer_size, split_layer_size],
-        num_heads=skill_dim
+        num_heads=skill_dim,
+        starter_hiddens=[512]
     )
-    target_qf2 = SplitNetworkSimple(
+    target_qf2 = SplitNetworkShared(
         input_x_size=obs_dim + action_dim,
         output_size=1,
         hidden_sizes = [split_layer_size, split_layer_size],
-        num_heads=skill_dim
+        num_heads=skill_dim,
+        starter_hiddens=[512]
     )
     df = FlattenMlp(
         input_size=obs_dim,
