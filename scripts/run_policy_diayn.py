@@ -26,11 +26,17 @@ def simulate_policy(args):
     if args.gpu:
         set_gpu_mode(True)
         policy.cuda()
+    video_dir = os.path.join('videos',args.vidname)
+    if os.path.exists(video_dir):
+        raise FileExistsError("This video folder already exists")
+    else:
+        os.mkdir(video_dir)
 
     import cv2
-    video = cv2.VideoWriter('videos/diayn' + args.env + args.vidname + '.avi',cv2.VideoWriter_fourcc(*'MJPG'), 30, (500,500))
     index = 0
     for skill in range(policy.stochastic_policy.skill_dim):
+        video = cv2.VideoWriter(os.path.join(video_dir,'video' + str(skill) + '.avi'), cv2.VideoWriter_fourcc(*'MJPG'), 30,
+                                (500, 500))
         for _ in range(3):
             path = rollout(
                 env,
@@ -45,14 +51,14 @@ def simulate_policy(args):
             for _ in range(30):
                 video.write(np.zeros([500,500,3]).astype(np.uint8))
             for i, img in enumerate(path['images']):
-                print(i)
-                print(img.shape)
+                # print(i)
+                # print(img.shape)
                 video.write(img[:,:,::-1].astype(np.uint8))
 #                cv2.imwrite("frames/diayn_bipedal_walker_hardcore.avi/%06d.png" % index, img[:,:,::-1])
                 index += 1
 
-    video.release()
-    print("wrote video")
+        video.release()
+        print("wrote video {0}".format(skill))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

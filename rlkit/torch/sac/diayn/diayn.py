@@ -67,7 +67,10 @@ class DIAYNTrainer(TorchTrainer):
 
         self.qf_criterion = nn.MSELoss()
         self.vf_criterion = nn.MSELoss()
-        self.df_criterion = nn.CrossEntropyLoss()
+        if self.policy.continuous:
+            self.df_criterion = nn.MSELoss()
+        else:
+            self.df_criterion = nn.CrossEntropyLoss()
 
         self.policy_optimizer = optimizer_class(
             self.policy.parameters(),
@@ -103,11 +106,18 @@ class DIAYNTrainer(TorchTrainer):
         """
         DF Loss and Intrinsic Reward
         """
-        z_hat = torch.argmax(skills, dim=1)
-        d_pred = self.df(next_obs)
-        d_pred_log_softmax = F.log_softmax(d_pred, 1)
-        _, pred_z = torch.max(d_pred_log_softmax, dim=1, keepdim=True)
-        rewards = d_pred_log_softmax[torch.arange(d_pred.shape[0]), z_hat] - math.log(1/self.policy.skill_dim)
+        if self.policy.continuous:
+            z_hat = skills #z_hat shape B x skill_dim
+            d_pred = F.normalize(self.df(next_obs),2,dim=-1) #shape B x skill_dim
+            rewards = torch.sum(d_pred * skills,dim=-1) - math.log(1/self.policy.skill_dim)
+            pred_z = d_pred
+
+        else:
+            z_hat = torch.argmax(skills, dim=1)
+            d_pred = self.df(next_obs)
+            d_pred_log_softmax = F.log_softmax(d_pred, 1)
+            _, pred_z = torch.max(d_pred_log_softmax, dim=1, keepdim=True)
+            rewards = d_pred_log_softmax[torch.arange(d_pred.shape[0]), z_hat] - math.log(1/self.policy.skill_dim)
         rewards = rewards.reshape(-1, 1)
         df_loss = self.df_criterion(d_pred, z_hat)
 
@@ -189,7 +199,10 @@ class DIAYNTrainer(TorchTrainer):
         """
         Save some statistics for eval
         """
-        df_accuracy = torch.sum(torch.eq(z_hat, pred_z.reshape(1, list(pred_z.size())[0])[0])).float()/list(pred_z.size())[0]
+        if self.policy.continuous:
+            df_accuracy = torch.mean(df_loss)
+        else:
+            df_accuracy = torch.sum(torch.eq(z_hat, pred_z.reshape(1, list(pred_z.size())[0])[0])).float()/list(pred_z.size())[0]
 
         if self._need_to_update_eval_statistics:
             self._need_to_update_eval_statistics = False

@@ -9,7 +9,7 @@ from rlkit.policies.base import Policy
 from rlkit.torch.core import eval_np
 from rlkit.torch.distributions import TanhNormal
 from rlkit.policies.base import ExplorationPolicy
-from rlkit.torch.networks import SplitNetworkSimple
+from rlkit.torch.networks import SplitNetworkSimple,SplitNetworkShared
 
 LOG_SIG_MAX = 2
 LOG_SIG_MIN = -20
@@ -121,27 +121,36 @@ class SimpleSplitSkillGaussianPolicy(nn.Module):
             action_dim,
             std=None,
             skill_dim=4,
-            init_w=1e-3
+            use_shared=True,
+            starter_hiddens=[512],
+            continuous=False
     ):
+        self.continuous = continuous
         super().__init__()
+        use_std = False
         if std is None:
-            self.network = SplitNetworkSimple(
+            use_std = True
+        if use_shared:
+            self.network = SplitNetworkShared(
                 hidden_sizes=hidden_sizes,
                 input_x_size = obs_dim,
                 output_size=action_dim,
                 num_heads=skill_dim,
-                use_std=True
-            )
+                use_std=True,
+                starter_hiddens=starter_hiddens
+                )
         else:
             self.network = SplitNetworkSimple(
                 hidden_sizes=hidden_sizes,
                 input_x_size = obs_dim,
                 output_size=action_dim,
                 num_heads=skill_dim,
-            )
+                use_std=True
+                )
         self.action_dim = action_dim
         self.skill_dim = skill_dim
         self.skill = 0
+        self.skill_reset()
 
         self.log_std = None
         self.std = std
@@ -161,9 +170,11 @@ class SimpleSplitSkillGaussianPolicy(nn.Module):
     def get_action(self, obs_np, deterministic=False):
         # generate (iters, skill_dim) matrix that stacks one-hot skill vectors
         # online reinforcement learning
-
-        skill_vec = np.zeros(self.skill_dim)
-        skill_vec[self.skill] += 1
+        if self.continuous:
+            skill_vec = self.skill
+        else:
+            skill_vec = np.zeros(self.skill_dim)
+            skill_vec[self.skill] += 1
         #obs_np = np.concatenate((obs_np, skill_vec), axis=0)
         actions = self.get_actions(obs_np[None], skill_vec[None],deterministic=deterministic)
         return actions[0, :], {"skill": skill_vec}
@@ -172,7 +183,10 @@ class SimpleSplitSkillGaussianPolicy(nn.Module):
         return eval_np(self, obs_np, skill, deterministic=deterministic)[0]
 
     def skill_reset(self):
-        self.skill = random.randint(0, self.skill_dim-1)
+        if self.continuous:
+            self.skill = np.random.vonmises(0,2,self.skill_dim)
+        else:
+            self.skill = random.randint(0, self.skill_dim-1)
 
     def parameters(self):
         return self.network.parameters()

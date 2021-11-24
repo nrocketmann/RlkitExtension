@@ -68,6 +68,7 @@ def rollout(env, agent, max_path_length=np.inf, render=False):
             np.expand_dims(next_o, 0)
         )
     )
+    print(rewards)
     return dict(
         observations=observations,
         actions=actions,
@@ -213,6 +214,7 @@ def DIAYNRollout(env, agent, skill, max_path_length=np.inf, render=False):
         agent_infos.append(agent_info)
         env_infos.append(env_info)
         path_length += 1
+
         if max_path_length == np.inf and d:
             break
         o = next_o

@@ -175,3 +175,23 @@ class SplitNetworkSimple(nn.Module):
             for w in mlp.parameters():
                 yield w
 
+#Can be used for multiple independent policies, or multiple independent Q functions
+#Takes skill vector and X inputs
+#for a Q function, X would be action and state put together, for a policy it would be just state
+class SplitNetworkShared(SplitNetworkSimple):
+    def __init__(self,
+                 hidden_sizes,
+                 output_size,
+                 input_x_size,
+                 num_heads,
+                 use_std=False,
+                 starter_hiddens=[512]
+                 ):
+        super(SplitNetworkShared,self).__init__(hidden_sizes,output_size,starter_hiddens[-1],num_heads,use_std)
+        self.shared_layers = FlattenMlp(starter_hiddens[:-1],starter_hiddens[-1],input_x_size)
+
+    def forward(self,input_x, input_skill, return_hidden = False):
+        hidden_rep = self.shared_layers(input_x)
+        outputs = super(SplitNetworkShared,self).forward(hidden_rep,input_skill)
+        return outputs
+

@@ -64,6 +64,9 @@ def experiment(variant, args):
         action_dim=action_dim,
         hidden_sizes=[split_layer_size, split_layer_size],
         skill_dim=skill_dim,
+        use_shared=True, #share layers??
+        starter_hiddens=[512],
+        continuous=True
     )
     eval_policy = MakeDeterministic(policy)
     eval_path_collector = DIAYNMdpPathCollector(
