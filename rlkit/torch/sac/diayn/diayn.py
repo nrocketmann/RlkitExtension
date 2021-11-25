@@ -62,6 +62,13 @@ class DIAYNTrainer(TorchTrainer):
                 lr=policy_lr,
             )
 
+        self.splitpolicy = hasattr(self.policy, "continuous") #ez check to see if it's a split policy or not
+        if not hasattr(self.policy,"continuous"):
+            self.policy.continuous = True
+
+        self.splitq = hasattr(self.qf1,'mlps')
+
+
         self.plotter = plotter
         self.render_eval_paths = render_eval_paths
 
@@ -94,12 +101,6 @@ class DIAYNTrainer(TorchTrainer):
         self.eval_statistics = OrderedDict()
         self._n_train_steps_total = 0
         self._need_to_update_eval_statistics = True
-
-        self.splitpolicy = hasattr(self.policy, "continuous") #ez check to see if it's a split policy or not
-        if not hasattr(self.policy,"continuous"):
-            self.policy.continuous = True
-
-        self.splitq = hasattr(self.qf1,'mlps')
 
 
     def train_from_torch(self, batch):
