@@ -95,6 +95,13 @@ class DIAYNTrainer(TorchTrainer):
         self._n_train_steps_total = 0
         self._need_to_update_eval_statistics = True
 
+        self.splitpolicy = hasattr(self.policy, "continuous") #ez check to see if it's a split policy or not
+        if not hasattr(self.policy,"continuous"):
+            self.policy.continuous = True
+
+        self.splitq = hasattr(self.qf1,'mlps')
+
+
     def train_from_torch(self, batch):
         rewards = batch['rewards']
         terminals = batch['terminals']
@@ -140,27 +147,43 @@ class DIAYNTrainer(TorchTrainer):
             alpha_loss = 0
             alpha = 1
 
-        q_new_actions = torch.min(
-            self.qf1(obs_actions_inp,skills),
-            self.qf2(obs_actions_inp,skills),
-        )
+        if self.splitq:
+            q_new_actions = torch.min(
+                self.qf1(obs_actions_inp,skills),
+                self.qf2(obs_actions_inp,skills),
+            )
+        else:
+            q_new_actions = torch.min(
+                self.qf1(obs_skills, new_obs_actions),
+                self.qf2(obs_skills, new_obs_actions),
+            )
         policy_loss = (alpha*log_pi - q_new_actions).mean()
 
         """
         QF Loss
         """
-        q1_pred = self.qf1(old_obs_actions_inp, skills)
-        q2_pred = self.qf2(old_obs_actions_inp, skills)
+        if self.splitq:
+            q1_pred = self.qf1(old_obs_actions_inp, skills)
+            q2_pred = self.qf2(old_obs_actions_inp, skills)
+        else:
+            q1_pred = self.qf1(obs_skills, actions)
+            q2_pred = self.qf2(obs_skills, actions)
         # Make sure policy accounts for squashing functions like tanh correctly!
         new_next_actions, _, _, new_log_pi, *_ = self.policy(
             next_obs, skill_vec = skills, reparameterize=True, return_log_prob=True,
         )
         next_obs_skills = torch.cat((next_obs, skills), dim=1)
         next_obs_actions = torch.cat((next_obs, new_next_actions),dim=1)
-        target_q_values = torch.min(
-            self.target_qf1(next_obs_actions,skills),
-            self.target_qf2(next_obs_actions,skills),
-        ) - alpha * new_log_pi
+        if self.splitq:
+            target_q_values = torch.min(
+                self.target_qf1(next_obs_actions,skills),
+                self.target_qf2(next_obs_actions,skills),
+            ) - alpha * new_log_pi
+        else:
+            target_q_values = torch.min(
+                self.target_qf1(next_obs_skills, new_next_actions),
+                self.target_qf2(next_obs_skills, new_next_actions),
+            ) - alpha * new_log_pi
 
         q_target = self.reward_scale * rewards + (1. - terminals) * self.discount * target_q_values
         qf1_loss = self.qf_criterion(q1_pred, q_target.detach())
