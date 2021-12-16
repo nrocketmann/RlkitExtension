@@ -239,10 +239,14 @@ class SplitNetworkAttention(nn.Module):
 
 
         # https://math.stackexchange.com/questions/1246358/the-product-of-multiple-univariate-gaussians
+
         final_stds = torch.reciprocal(torch.sqrt(torch.sum(torch.reciprocal(torch.pow(modified_stds,2)),dim=1))) #sum over all heads #batch_size x output_dim
         final_means = torch.pow(final_stds,2) * torch.sum(torch.reciprocal(torch.pow(modified_stds,2)) * mean_results) #same shape
+        scale = torch.pow(2 * 3.142, (1 - self.num_heads) / 2) * final_stds / torch.prod(modified_stds,dim=1) * \
+            torch.exp(.5 * torch.reciprocal(torch.pow(final_stds,2)) * torch.pow(final_means, 2) - \
+                      .5 * torch.sum(torch.reciprocal(torch.pow(modified_stds,2)) * torch.pow(mean_results,2),dim=1))
 
-        return final_means, torch.log(final_stds), final_stds
+        return final_means * scale, torch.log(final_stds * scale), final_stds * scale
 
     def parameters(self):
         for mlp in self.mlps:

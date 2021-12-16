@@ -64,7 +64,7 @@ def experiment(variant, args):
         skill_dim=skill_dim,
         use_shared=True, #share layers??
         starter_hiddens=[512],
-        continuous=True,
+        continuous=False,
         use_attention = True
     )
     eval_policy = MakeDeterministic(policy)

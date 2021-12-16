@@ -15,7 +15,7 @@ filename = str(uuid.uuid4())
 
 def simulate_policy(args):
  #   data = joblib.load(args.file)
-    policy = torch.load(os.path.join(args.file,'evaluation','policy','params.pt'))
+    policy = torch.load(os.path.join(args.file,'evaluation','policy','params.pt'),map_location='cpu')
 
     # data = torch.load(args.file)
     #
