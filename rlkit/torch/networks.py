@@ -234,7 +234,7 @@ class SplitNetworkAttention(nn.Module):
 
         attention_queries = nn.functional.normalize(self.query_nn(mlp_hiddens)) #shape batch x num_heads x attention_dim
         attention_keys = nn.functional.normalize(self.key_nn(input_skill)).unsqueeze(-1) #shape batch x num_heads x 1
-        attention_weights = torch.softmax((attention_queries @ attention_keys),dim=1) #batch x num_heads
+        attention_weights = torch.softmax(torch.matmul(attention_queries, attention_keys),dim=1) #batch x num_heads
         modified_stds = std_results/torch.sqrt(attention_weights) #(batch x num_heads x output_dim)
 
         # https://math.stackexchange.com/questions/1246358/the-product-of-multiple-univariate-gaussians
