@@ -11,7 +11,7 @@ from rlkit.torch.sac.diayn.diayn_path_collector import DIAYNMdpPathCollector
 from rlkit.samplers.data_collector.step_collector import MdpStepCollector
 from rlkit.torch.sac.diayn.policies import SimpleSplitSkillGaussianPolicy, MakeDeterministic
 from rlkit.torch.sac.diayn.diayn import DIAYNTrainer
-from rlkit.torch.networks import FlattenMlp, SplitNetworkSimple, SplitNetworkShared
+from rlkit.torch.networks import FlattenMlp, SplitNetworkSimple, SplitNetworkShared, SplitNetworkAttention
 from rlkit.torch.sac.diayn.diayn_torch_online_rl_algorithm import DIAYNTorchOnlineRLAlgorithm
 
 
@@ -28,36 +28,30 @@ def experiment(variant, args):
 
     M = variant['layer_size']
     split_layer_size = int(M/skill_dim)
-    qf1 = SplitNetworkShared(
-        input_x_size=obs_dim + action_dim,
+    qf1 = FlattenMlp(
+        input_size=obs_dim + action_dim + skill_dim,
         output_size=1,
-        hidden_sizes = [split_layer_size, split_layer_size],
-        num_heads=skill_dim,
-        starter_hiddens=[512]
+        hidden_sizes=[M, M],
     )
 
-    qf2 = SplitNetworkShared(
-        input_x_size=obs_dim + action_dim,
+    qf2 = FlattenMlp(
+        input_size=obs_dim + action_dim + skill_dim,
         output_size=1,
-        hidden_sizes = [split_layer_size, split_layer_size],
-        num_heads=skill_dim,
-        starter_hiddens=[512]
+        hidden_sizes=[M, M],
     )
 
-    target_qf1 = SplitNetworkShared(
-        input_x_size=obs_dim + action_dim,
+    target_qf1 = FlattenMlp(
+        input_size=obs_dim + action_dim + skill_dim,
         output_size=1,
-        hidden_sizes = [split_layer_size, split_layer_size],
-        num_heads=skill_dim,
-        starter_hiddens=[512]
+        hidden_sizes=[M, M],
     )
-    target_qf2 = SplitNetworkShared(
-        input_x_size=obs_dim + action_dim,
+
+    target_qf2 = FlattenMlp(
+        input_size=obs_dim + action_dim + skill_dim,
         output_size=1,
-        hidden_sizes = [split_layer_size, split_layer_size],
-        num_heads=skill_dim,
-        starter_hiddens=[512]
+        hidden_sizes=[M, M],
     )
+
     df = FlattenMlp(
         input_size=obs_dim,
         output_size=skill_dim,
@@ -70,7 +64,8 @@ def experiment(variant, args):
         skill_dim=skill_dim,
         use_shared=True, #share layers??
         starter_hiddens=[512],
-        continuous=True
+        continuous=True,
+        use_attention = True
     )
     eval_policy = MakeDeterministic(policy)
     eval_path_collector = DIAYNMdpPathCollector(

@@ -9,7 +9,7 @@ from rlkit.policies.base import Policy
 from rlkit.torch.core import eval_np
 from rlkit.torch.distributions import TanhNormal
 from rlkit.policies.base import ExplorationPolicy
-from rlkit.torch.networks import SplitNetworkSimple,SplitNetworkShared
+from rlkit.torch.networks import SplitNetworkSimple,SplitNetworkShared, SplitNetworkAttention
 
 LOG_SIG_MAX = 2
 LOG_SIG_MIN = -20
@@ -123,14 +123,23 @@ class SimpleSplitSkillGaussianPolicy(nn.Module):
             skill_dim=4,
             use_shared=True,
             starter_hiddens=[512],
-            continuous=False
+            continuous=False,
+            use_attention = False
     ):
         self.continuous = continuous
         super().__init__()
         use_std = False
         if std is None:
             use_std = True
-        if use_shared:
+        if use_attention:
+            self.network = SplitNetworkAttention(
+                hidden_sizes=hidden_sizes,
+                input_x_size=obs_dim,
+                output_size=action_dim,
+                num_heads=skill_dim,
+                starter_hiddens=starter_hiddens
+            )
+        elif use_shared:
             self.network = SplitNetworkShared(
                 hidden_sizes=hidden_sizes,
                 input_x_size = obs_dim,

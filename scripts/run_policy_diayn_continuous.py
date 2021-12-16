@@ -35,10 +35,20 @@ def simulate_policy(args):
     import cv2
     index = 0
     skill_dim = policy.stochastic_policy.skill_dim
-    for idx in range(args.num_skills):
+    if args.num_skills==-1:
+        num_skills = skill_dim
+    else:
+        num_skills = args.num_skills
+    for idx in range(num_skills):
         video = cv2.VideoWriter(os.path.join(video_dir,'video' + str(idx) + '.avi'), cv2.VideoWriter_fourcc(*'MJPG'), 30,
                                 (500, 500))
-        skill = np.random.vonmises(0,2,[skill_dim])
+        if args.num_skills==-1:
+            skill = np.zeros([skill_dim])
+            skill[idx] = 1
+        else:
+            skill = np.random.vonmises(0,2,[skill_dim])
+
+
         for _ in range(3):
             path = rollout(
                 env,

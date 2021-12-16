@@ -65,7 +65,7 @@ class Mlp(nn.Module):
         self.last_fc.weight.data.uniform_(-init_w, init_w)
         self.last_fc.bias.data.uniform_(-init_w, init_w)
 
-    def forward(self, input, return_preactivations=False):
+    def forward(self, input, return_preactivations=False, return_last_hidden = False):
         h = input
         for i, fc in enumerate(self.fcs):
             h = fc(h)
@@ -74,6 +74,8 @@ class Mlp(nn.Module):
             h = self.hidden_activation(h)
         preactivation = self.last_fc(h)
         output = self.output_activation(preactivation)
+        if return_last_hidden:
+            return output, h
         if return_preactivations:
             return output, preactivation
         else:
@@ -195,3 +197,59 @@ class SplitNetworkShared(SplitNetworkSimple):
         outputs = super(SplitNetworkShared,self).forward(hidden_rep,input_skill)
         return outputs
 
+#https://math.stackexchange.com/questions/1246358/the-product-of-multiple-univariate-gaussians
+#Split network with attention composition
+#product of gaussians equation given above
+#REQUIRES STD
+class SplitNetworkAttention(nn.Module):
+    def __init__(self,
+                 hidden_sizes,
+                 output_size,
+                 input_x_size,
+                 num_heads,
+                 starter_hiddens=[512],
+                 attention_dim = 128
+                 ):
+        super(SplitNetworkAttention,self).__init__()
+        self.num_heads = num_heads
+        self.mlps = []
+        self.output_size = output_size
+        self.shared_layers = FlattenMlp(starter_hiddens[:-1], starter_hiddens[-1], input_x_size)
+        for i in range(num_heads):
+            self.mlps.append(FlattenMlp(hidden_sizes,output_size*2,starter_hiddens[-1]))
+
+        self.key_nn = nn.Linear(num_heads,attention_dim)
+        self.query_nn = nn.Linear(hidden_sizes[-1], attention_dim)
+
+    def forward(self,input_x, input_skill, return_hidden = False):
+        #input_x shape: batch x inp_dim
+        #skill shape: batch x skill_dim=num_heads
+        hidden_rep = self.shared_layers(input_x)
+        mlp_outputs = [mlp(hidden_rep, return_last_hidden=True) for mlp in self.mlps]
+        mlp_results = torch.stack([x[0] for x in mlp_outputs],dim=0).transpose(1,0) #shape batch x num_heads*2 x output_dim
+        mlp_hiddens = torch.stack([x[1] for x in mlp_outputs],dim=0).transpose(1,0)
+
+        mean_results = mlp_results[:,:,:self.output_size]#get all means (batch x num_heads x output_dim)
+        std_results = mlp_results[:, :, self.output_size:]
+
+        attention_queries = nn.functional.normalize(self.query_nn(mlp_hiddens)) #shape batch x num_heads x attention_dim
+        attention_keys = nn.functional.normalize(self.key_nn(input_skill)).unsqueeze(-1) #shape batch x num_heads x 1
+        attention_weights = torch.softmax((attention_queries @ attention_keys),dim=1) #batch x num_heads
+        modified_stds = std_results/torch.sqrt(attention_weights) #(batch x num_heads x output_dim)
+
+        # https://math.stackexchange.com/questions/1246358/the-product-of-multiple-univariate-gaussians
+        final_stds = 1/torch.sqrt(torch.sum(1/modified_stds**2,dim=1)) #sum over all heads #batch_size x output_dim
+        final_means = (final_stds**2) * torch.sum(1/(modified_stds**2) * mean_results) #same shape
+
+        return final_means, torch.log(final_stds), final_stds
+
+    def parameters(self):
+        for mlp in self.mlps:
+            for w in mlp.parameters():
+                yield w
+        for w in self.shared_layers.parameters():
+            yield w
+        for w in self.key_nn.parameters():
+            yield w
+        for w in self.query_nn.parameters():
+            yield w
