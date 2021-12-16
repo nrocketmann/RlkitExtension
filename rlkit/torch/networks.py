@@ -238,8 +238,8 @@ class SplitNetworkAttention(nn.Module):
         modified_stds = std_results/torch.sqrt(attention_weights) #(batch x num_heads x output_dim)
 
         # https://math.stackexchange.com/questions/1246358/the-product-of-multiple-univariate-gaussians
-        final_stds = 1/torch.sqrt(torch.sum(1/modified_stds**2,dim=1)) #sum over all heads #batch_size x output_dim
-        final_means = (final_stds**2) * torch.sum(1/(modified_stds**2) * mean_results) #same shape
+        final_stds = 1/torch.sqrt(torch.sum(torch.reciprocal(torch.square(modified_stds)),dim=1)) #sum over all heads #batch_size x output_dim
+        final_means = torch.square(final_stds) * torch.sum(torch.reciprocal(torch.square(modified_stds)) * mean_results) #same shape
 
         return final_means, torch.log(final_stds), final_stds
 
