@@ -226,7 +226,7 @@ class SplitNetworkAttention(nn.Module):
         #skill shape: batch x skill_dim=num_heads
         print(input_x.get_device())
         hidden_rep = self.shared_layers(input_x)
-        print(hidden_req.get_device())
+        print(hidden_rep.get_device())
         mlp_outputs = [mlp(hidden_rep, return_last_hidden=True) for mlp in self.mlps]
         mlp_results = torch.stack([x[0] for x in mlp_outputs],dim=0).transpose(1,0) #shape batch x num_heads*2 x output_dim
         mlp_hiddens = torch.stack([x[1] for x in mlp_outputs],dim=0).transpose(1,0)
