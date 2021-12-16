@@ -231,11 +231,14 @@ class SplitNetworkAttention(nn.Module):
 
         mean_results = mlp_results[:,:,:self.output_size]#get all means (batch x num_heads x output_dim)
         std_results = mlp_results[:, :, self.output_size:]
-
+        print(mean_results.get_device())
+        print(std_results.get_device())
         attention_queries = nn.functional.normalize(self.query_nn(mlp_hiddens)) #shape batch x num_heads x attention_dim
         attention_keys = nn.functional.normalize(self.key_nn(input_skill)).unsqueeze(-1) #shape batch x num_heads x 1
         attention_weights = torch.softmax(torch.matmul(attention_queries, attention_keys),dim=1) #batch x num_heads
         modified_stds = std_results/torch.sqrt(attention_weights) #(batch x num_heads x output_dim)
+        print(modified_stds.get_device())
+        print(attention_weights.get_device())
 
         # https://math.stackexchange.com/questions/1246358/the-product-of-multiple-univariate-gaussians
         final_stds = torch.reciprocal(torch.sqrt(torch.sum(torch.reciprocal(torch.square(modified_stds)),dim=1))) #sum over all heads #batch_size x output_dim
