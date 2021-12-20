@@ -12,6 +12,7 @@ from rlkit.torch import pytorch_util as ptu
 from rlkit.torch.core import eval_np
 from rlkit.torch.data_management.normalizer import TorchFixedNormalizer
 from rlkit.torch.modules import LayerNorm
+import numpy as np
 
 LOG_SIG_MAX = 2
 LOG_SIG_MIN = -20
@@ -242,9 +243,9 @@ class SplitNetworkAttention(nn.Module):
 
         final_stds = torch.reciprocal(torch.sqrt(torch.sum(torch.reciprocal(torch.pow(modified_stds,2)),dim=1))) #sum over all heads #batch_size x output_dim
         final_means = torch.pow(final_stds,2) * torch.sum(torch.reciprocal(torch.pow(modified_stds,2)) * mean_results) #same shape
-        scale = (2 * 3.142)**( (1 - self.num_heads) / 2) * final_stds / torch.prod(modified_stds,dim=1) * \
-            torch.exp(.5 * torch.reciprocal(torch.pow(final_stds,2)) * torch.pow(final_means, 2) - \
-                      .5 * torch.sum(torch.reciprocal(torch.pow(modified_stds,2)) * torch.pow(mean_results,2),dim=1))
+        scale = np.log(2 * 3.142) * ( (1 - self.num_heads) / 2)  + torch.log(final_stds) - torch.sum(torch.log(modified_stds),dim=1) \
+             + .5 * torch.reciprocal(torch.pow(final_stds,2)) * torch.pow(final_means, 2) - \
+                      .5 * torch.sum(torch.reciprocal(torch.pow(modified_stds,2)) * torch.pow(mean_results,2),dim=1)
 
         return final_means * scale, torch.log(final_stds * scale), final_stds * scale
 
