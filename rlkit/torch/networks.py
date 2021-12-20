@@ -247,7 +247,7 @@ class SplitNetworkAttention(nn.Module):
              + .5 * torch.reciprocal(torch.pow(final_stds,2)) * torch.pow(final_means, 2) - \
                       .5 * torch.sum(torch.reciprocal(torch.pow(modified_stds,2)) * torch.pow(mean_results,2),dim=1)
 
-        return final_means * scale, torch.log(final_stds * scale), final_stds * scale
+        return final_means * torch.exp(scale), torch.log(final_stds) + scale, final_stds * torch.exp(scale)
 
     def parameters(self):
         for mlp in self.mlps:
