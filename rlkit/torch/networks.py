@@ -219,10 +219,11 @@ class SplitNetworkAttention(nn.Module):
         for i in range(num_heads):
             self.mlps.append(FlattenMlp(hidden_sizes,output_size*2,starter_hiddens[-1]).to('cuda:0'))
 
-        self.key_nn = nn.Linear(num_heads,attention_dim)
-        self.query_nn = nn.Linear(hidden_sizes[-1], attention_dim)
+        self.key_nn = nn.Linear(num_heads,attention_dim,bias=False)
+        self.query_nn = nn.Linear(hidden_sizes[-1], attention_dim,bias=False)
 
     def forward(self,input_x, input_skill, return_hidden = False):
+
         #input_x shape: batch x inp_dim
         #skill shape: batch x skill_dim=num_heads
         hidden_rep = self.shared_layers(input_x)
@@ -231,23 +232,18 @@ class SplitNetworkAttention(nn.Module):
         mlp_hiddens = torch.stack([x[1] for x in mlp_outputs],dim=0).transpose(1,0)
 
         mean_results = mlp_results[:,:,:self.output_size]#get all means (batch x num_heads x output_dim)
-        std_results = mlp_results[:, :, self.output_size:]
+        std_results = mlp_results[:, :, self.output_size:] #these should be log stds, gotta clamp 'em and exp em to get actual stds
+        log_std = torch.clamp(std_results, LOG_SIG_MIN, LOG_SIG_MAX)
+        actual_std = torch.exp(log_std)
 
         attention_queries = nn.functional.normalize(self.query_nn(mlp_hiddens)) #shape batch x num_heads x attention_dim
         attention_keys = nn.functional.normalize(self.key_nn(input_skill)).unsqueeze(-1) #shape batch x num_heads x 1
-        attention_weights = torch.softmax(torch.matmul(attention_queries, attention_keys),dim=1) #batch x num_heads
-        modified_stds = std_results/torch.sqrt(attention_weights) #(batch x num_heads x output_dim)
+        attention_weights = torch.softmax(torch.matmul(attention_queries, attention_keys),dim=1) #batch x num_heads x 1
 
+        new_stds = torch.reciprocal(torch.sum(attention_weights/actual_std,dim=1))
+        new_means = new_stds * torch.sum(attention_weights * mean_results/actual_std,dim=1)
 
-        # https://math.stackexchange.com/questions/1246358/the-product-of-multiple-univariate-gaussians
-
-        final_stds = torch.reciprocal(torch.sqrt(torch.sum(torch.reciprocal(torch.pow(modified_stds,2)),dim=1))) #sum over all heads #batch_size x output_dim
-        final_means = torch.pow(final_stds,2) * torch.sum(torch.reciprocal(torch.pow(modified_stds,2)) * mean_results) #same shape
-        scale = np.log(2 * 3.142) * ( (1 - self.num_heads) / 2)  + torch.log(final_stds) - torch.sum(torch.log(modified_stds),dim=1) \
-             + .5 * torch.reciprocal(torch.pow(final_stds,2)) * torch.pow(final_means, 2) - \
-                      .5 * torch.sum(torch.reciprocal(torch.pow(modified_stds,2)) * torch.pow(mean_results,2),dim=1)
-
-        return final_means * torch.exp(scale), torch.log(final_stds) + scale, final_stds * torch.exp(scale)
+        return new_means, torch.log(new_stds), new_stds
 
     def parameters(self):
         for mlp in self.mlps:
